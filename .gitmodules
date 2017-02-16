@@ -1,0 +1,6 @@
+[submodule "php-barcode-generator"]
+	path = library/php-barcode-generator
+	url = git://github.com/picqer/php-barcode-generator.git
+[submodule "QrCode"]
+	path = library/QrCode
+	url = git://github.com/endroid/QrCode.git
