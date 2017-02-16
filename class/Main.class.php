@@ -1,0 +1,8 @@
+/**
+ *  Main Class
+ */
+ 
+ 
+class Main {
+	
+}

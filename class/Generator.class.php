@@ -1,0 +1,8 @@
+/**
+ *  Generator Class
+ */
+ 
+
+class Generator {
+	
+}

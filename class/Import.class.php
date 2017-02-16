@@ -1,0 +1,8 @@
+/**
+ *  Import Class
+ */
+ 
+ 
+class Import {
+	
+}
