@@ -41,6 +41,14 @@ class Main {
 	
 	/**
 	 *  Générer un unique ticket au format PDF
+	 *  
+	 *  @param string $user_first_name Le prénom du détenteur du billet
+	 *  @param string $user_last_name  Le nom du détenteur du billet
+	 *  @param string $event_date      La date de l'événement
+	 *  @param string $ticket_type     Le type de ticket (peut-être vide)
+	 *  @param string $ticket_price    Le prix du ticket (si vide, gratuit)
+	 *  @param string $ticket_buy_date La date d'achat du ticket
+	 *  @param string $ticket_code     Le code du ticket (servira à générer le code barre)
 	 */
 	public function genTicket($user_first_name, $user_last_name, $event_date, $ticket_type, $ticket_price, $ticket_buy_date, $ticket_code){
 		if(!empty($this->codes)){
@@ -116,8 +124,22 @@ class Main {
         }
 	}
 	
-	public function setCodes($data[]){
-		$this->codes = $data;
+	/**
+	 *  Définit des codes de tickets valides. Ces codes seront comparés aux tickets générés afin de valider leurs authenticité
+	 *  
+	 *  @param array $codes Tableau contenant les codes valides
+	 */
+	public function setCodes($codes[]){
+		$this->codes = $codes;
+	}
+	
+	/**
+	 *  Récupérer la liste des codes valides
+	 *  
+	 *  @return array Retourne la liste des codes
+	 */
+	public function getCodes(){
+		return $this->codes;
 	}
 	
 	/**
