@@ -1,8 +1,0 @@
-/**
- *  Import Class
- */
- 
- 
-class Import {
-	
-}
