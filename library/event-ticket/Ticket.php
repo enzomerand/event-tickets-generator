@@ -4,6 +4,9 @@
  */
 
 namespace EventTicket;
+
+use Endroid\QrCode\QrCode;
+use Picqer\Barcode\BarcodeGeneratorPNG;
  
 /**
  *  Cette classe regroupe les fonctionnalitées principales de la librairie
@@ -14,72 +17,149 @@ namespace EventTicket;
  */
 class Ticket {
 	
-	private $importer, $generator, $codes, $zip;
+	private $importer, $generator, $codes, $zip, $qrcode, $barcode;
 	
 	public $event_logo, $event_name, $event_orga_name, $event_location, $path_tickets = 'tickets';
 	
 	/**
-	 *  Initialise la classe et charge les librairies. Certains paramètres généraux relatifs aux tickets peuvent être définit
+	 *  Initialiser la classe et charger les librairies. Certains paramètres généraux relatifs aux tickets peuvent être définit
 	 */
 	public function __construct($event_logo = null, $event_name = null, $event_orga_name = null, $event_location = null){
 		$this->generator = new Generator;
 		$this->zip       = new \ZipArchive();
+		$this->qrcode    = new QrCode();
+		$this->barcode   = new BarcodeGeneratorPNG();
 		
 		$this->event_logo      = $event_logo;
 		$this->event_name      = $event_name;
 		$this->event_orga_name = $event_orga_name;
 		$this->event_location  = $event_location;
+		
+		if(!is_dir('temp')) mkdir('temp');
+		if(!is_dir('tickets')) mkdir('tickets');
 	}
 	
 	/**
-	 *  Initialise le modèle du ticket au format PDF. Les paramètres généraux sont définit au préalable au sein de la classe
+	 *  Supprimer le dossier temporaire et son contenu
+	 */
+	private function cleanTemp(){
+		//rmdir('temp');
+	}
+	
+	/**
+	 *  Initialiser le modèle du ticket au format PDF. Les paramètres généraux sont définit au préalable au sein de la classe
 	 */
 	public function setGenerator(){
-		$this->generator->logo = $this->event_logo;
-	}
-	
-	/**
-	 *  Générer un unique ticket au format PDF
-	 *  
-	 *  @param string $user_first_name Le prénom du détenteur du billet
-	 *  @param string $user_last_name  Le nom du détenteur du billet
-	 *  @param string $event_date      La date de l'événement
-	 *  @param string $ticket_type     Le type de ticket (peut-être vide)
-	 *  @param string $ticket_price    Le prix du ticket (si vide, gratuit)
-	 *  @param string $ticket_buy_date La date d'achat du ticket
-	 *  @param string $ticket_code     Le code du ticket (servira à générer le code barre)
-	 */
-	public function genTicket($user_first_name, $user_last_name, $event_date, $ticket_type, $ticket_price, $ticket_buy_date, $ticket_code){
-		if(!empty($this->codes)){
-			if(!in_array($ticket_code, $this->codes))
-				throw new Exception('Des codes de tickets sont définis mais le ticket actuel n\'en a pas ou le code n\'est pas valide.');
-		}
-		
-		$this->generator->Output();
-		
+		$this->generator->event_logo = $this->event_logo;
+		$this->generator->event_name = $this->event_name;
 	}
 	
 	/**
 	 *  Générer un ou plusieurs tickets au format PDF à partir d'un tableau. Ne retourne pas d'erreurs si un camps est manquant
 	 *  
-	 *  @param array $tickets Contient le(s) ticket(s) eux-même dans des tableaux
+	 *  @param array  $tickets         Contient le(s) ticket(s) eux-même dans des tableaux
+	 *  @param bool   $multiple_file   Permet d'enregistrer sous plusieurs fichiers chaque billets (pas de rendu)
+	 *  @param bool   $display         Rendu direct du PDF (affichage dans la naviguateur en appelant la fonction)
+	 *  @param string $ticket_template Template du ticket à utiliser
 	 *  
-	 *  return array Retourne le nom de chaque ticket généré
+	 *  return array Retourne le code de chaque ticket généré ainsi que l'information si les tickets sont dans un seul fichiers ou plusieurs
 	 */
-	public function genTickets($tickets){
+	public function genTickets($tickets, $multiple_file = false, $display = true, $ticket_template = 'BasicTicket'){
 		$this->setGenerator();
 		
-		$tickets_file_name = [];
+		if(!method_exists($this->generator, $ticket_template))
+			throw new \Exception('Le template n\'existe pas.');
+		
+		if(empty($tickets))
+			throw new \Exception('Il n\'y a pas de tickets.');
+		
+		$tickets_code = [];
 		foreach($tickets as $ticket){
+			if(empty($ticket['ticket_code']))
+			    throw new \Exception('Le ticket n\'a pas de code.');
+		
 			if(!empty($this->codes)){
-				if(!in_array($ticket->ticket_code, $this->codes))
-					throw new Exception('Des codes de tickets sont définis mais le ticket actuel n\'en a pas ou le code n\'est pas valide.');
+				if(!in_array($ticket['ticket_code'], $this->codes))
+					throw new \Exception('Des codes de tickets sont définis mais le ticket actuel n\'en a pas ou le code n\'est pas valide.');
 			}
 			
-			$tickets_file_name[] = rand(10000, 99999);
+			$new_ticket = [];
+			$new_ticket = [
+				'ticket_code'     => $ticket['ticket_code'],
+				'user_first_name' => isset($ticket['user_first_name']) ? $ticket['user_first_name'] : 'N/A',
+				'user_last_name'  => isset($ticket['user_last_name']) ? $ticket['user_last_name'] : 'N/A',
+				'event_date'      => isset($ticket['event_date']) ? date('d/m/Y H:i:s', strtotime($ticket['event_date'])) : 'N/A',
+				'ticket_type'     => isset($ticket['ticket_type']) ? $ticket['ticket_type'] : 'N/A',
+				'ticket_price'    => isset($ticket['ticket_price']) ? $ticket['ticket_price'] : 'N/A',
+				'ticket_buy_date' => isset($ticket['ticket_buy_date']) ? $ticket['ticket_buy_date'] : 'N/A',
+			];
+			$ticket = $new_ticket;
+			
+			$this->generator->setInformations($ticket, $this->genQrCode($ticket['ticket_code']), $this->genBarCode($ticket['ticket_code']));
+			$this->generator->AddPage();
+			$this->generator->$ticket_template();
+			
+			$tickets_code[] = $ticket['ticket_code'];
+			
+			if($multiple_file === true){
+				$this->generator->Output('F', 'tickets/' . $ticket['ticket_code'] . '.pdf');
+				$this->generator = new Generator;
+			    $this->setGenerator();
+			}
+		}
+	
+	    $tickets_code['multiple_file'] = true;
+	    if($multiple_file === false){
+			$file_name = 'tickets/tickets' . rand() . '.pdf';
+			$this->generator->Output('F', $file_name);
+			$tickets_code['multiple_file'] = $file_name;
 		}
 		
-		return $tickets_file_name;
+		if($multiple_file === false && $display === true)
+			$this->generator->Output();
+		
+		$this->cleanTemp();
+		
+		return $tickets_code;
+	}
+	
+	/**
+	 *  Générer un QrCode
+	 *  
+	 *  @param string|int  $ticket_code Code du ticket
+	 *  @param string|bool $link        Lien du QrCode (si le QrCode doit retourner vers un lien)
+	 *  
+	 *  @return string Lien image du QrCode
+	 */
+	private function genQrCode($ticket_code, $link = false){
+		$ticket_code_file = $ticket_code . rand();
+		$this->qrcode
+			->setText($ticket_code)
+			->setSize(200)
+			->setPadding(20)
+			->setErrorCorrection('high')
+			->setForegroundColor(['r' => 0, 'g' => 0, 'b' => 0, 'a' => 0])
+			->setBackgroundColor(['r' => 255, 'g' => 255, 'b' => 255, 'a' => 0])
+			->setImageType(QrCode::IMAGE_TYPE_PNG)
+		;
+
+		$this->qrcode->save("temp/{$ticket_code_file}.png");
+		
+		return "temp/{$ticket_code_file}.png";
+	}
+	
+	/**
+	 *  Générer un code-barre
+	 *  
+	 *  @param string|int  $ticket_code Code du ticket
+	 *  
+	 *  @return string Lien image du code-barre
+	 */
+	private function genBarCode($ticket_code){
+		$ticket_code_file = $ticket_code . rand();
+		file_put_contents("temp/{$ticket_code_file}.png", $this->barcode->getBarcode($ticket_code, $this->barcode::TYPE_CODE_128));
+		
+		return "temp/{$ticket_code_file}.png";
 	}
 	
 	/**
@@ -87,7 +167,7 @@ class Ticket {
 	 *  
 	 *  @param string $file Chemin du fichier à importer
 	 */
-	public function importTicket($file){
+	public function importTickets($file){
 		$this->checkFile($file);
 		
 		$tickets = [];
@@ -120,6 +200,10 @@ class Ticket {
 		$cells = [];
 		$i = 0;
 		foreach($tickets as $ticket){
+			if(!empty($this->codes)){
+				if(!in_array($ticket['ticket_code'], $this->codes))
+					throw new \Exception('Des codes de tickets sont définis mais le ticket actuel n\'en a pas ou le code n\'est pas valide.');
+			}
 			$new_ticket = [];
 			$new_ticket['id'] = $i;
 			$new_ticket = [
@@ -138,13 +222,12 @@ class Ticket {
 		
 		echo implode($separator, $head) . "\r\n";
 
-        foreach ($cells as $cell) {
+        foreach ($cells as $cell)
 	        echo implode($separator, $cell) . "\r\n";
-        }
 	}
 	
 	/**
-	 *  Définit des codes de tickets valides. Ces codes seront comparés aux tickets générés afin de valider leurs authenticité
+	 *  Définir des codes de tickets valides. Ces codes seront comparés aux tickets générés afin de valider leurs authenticité
 	 *  
 	 *  @param array $codes Tableau contenant les codes valides
 	 */
@@ -170,11 +253,10 @@ class Ticket {
 	 *  @see genTickets()
 	 */
 	public function downloadTicket($file = null, $tickets = null){
-		if($file != null){
+		if($file != null)
 			$this->checkFile($file);
-		}else {
+		else
 			$file = $this->genTickets($tickets);
-		}
 		
 		if(is_array($file)){
 			$this->zip->open('tickets.zip', ZipArchive::CREATE);
@@ -199,6 +281,8 @@ class Ticket {
 	 *  
 	 *  @param string $file Chemin vers le fichier
 	 *  @param string $type Extension à vérifier
+	 *  
+	 *  @return true
 	 */
 	private function checkFile($file, $type = 'csv'){
 		if(empty($file) && !file_exists($file))
