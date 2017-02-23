@@ -1,9 +1,9 @@
 <?php
 /**
- *  Main Class
+ *  Ticket Class
  */
- 
-use Importer, Generator, ZipArchive;
+
+namespace EventTicket;
  
 /**
  *  Cette classe regroupe les fonctionnalitées principales de la librairie
@@ -12,7 +12,7 @@ use Importer, Generator, ZipArchive;
  *  @version 1.0
  *  @license CC-BY-NC-SA-4.0 Creative Commons Attribution Non Commercial Share Alike 4.0
  */
-class Main {
+class Ticket {
 	
 	private $importer, $generator, $codes, $zip;
 	
@@ -21,10 +21,9 @@ class Main {
 	/**
 	 *  Initialise la classe et charge les librairies. Certains paramètres généraux relatifs aux tickets peuvent être définit
 	 */
-	public function __construct($event_logo = null, $event_name = null, $event_orga_name = null, $event_location = null, Importer $importer, Generator $generator, ZipArchive $zip){
-		$this->importer  = new $importer();
-		$this->generator = new $generator();
-		$this->zip       = new $zip;
+	public function __construct($event_logo = null, $event_name = null, $event_orga_name = null, $event_location = null){
+		$this->generator = new Generator;
+		$this->zip       = new \ZipArchive();
 		
 		$this->event_logo      = $event_logo;
 		$this->event_name      = $event_name;
@@ -36,7 +35,7 @@ class Main {
 	 *  Initialise le modèle du ticket au format PDF. Les paramètres généraux sont définit au préalable au sein de la classe
 	 */
 	public function setGenerator(){
-		$this->generator->logo = $event_logo;
+		$this->generator->logo = $this->event_logo;
 	}
 	
 	/**
@@ -67,11 +66,17 @@ class Main {
 	 *  
 	 *  return array Retourne le nom de chaque ticket généré
 	 */
-	public function genTickets($tickets[]){
+	public function genTickets($tickets){
 		$this->setGenerator();
 		
+		$tickets_file_name = [];
 		foreach($tickets as $ticket){
+			if(!empty($this->codes)){
+				if(!in_array($ticket->ticket_code, $this->codes))
+					throw new Exception('Des codes de tickets sont définis mais le ticket actuel n\'en a pas ou le code n\'est pas valide.');
+			}
 			
+			$tickets_file_name[] = rand(10000, 99999);
 		}
 		
 		return $tickets_file_name;
@@ -106,18 +111,32 @@ class Main {
 	 *  @param bool   $head      Permet de définir un en-tête propre ou un en-tête "prêt à importer" (valeur par défaut recommandée)
 	 *  @param string $separator Définit le séparateur pour les lignes (valeur par défaut recommandée)
 	 */
-	public function exportTickets($tickets[], $head = true, $separator = ';'){
+	public function exportTickets($tickets, $head = true, $separator = ';'){
 		header("Content-Type: text/csv; charset=UTF-8");
 		header("Content-Disposition: attachment; filename=tickets.csv");
 		
-		$head = $head === true ? $head = ["id", "ticket_code", "user_first_name", "user_last_name", "event_date", "ticket_type", "ticket_price", "ticket_buy_date"] : ["", "Code", "Prénom", "Nom", "Date", "Type", "Prix", "Date d'achat"];
+		$head = ($head === true) ? $head = ["id", "ticket_code", "user_first_name", "user_last_name", "event_date", "ticket_type", "ticket_price", "ticket_buy_date"] : ["", "Code", "Prénom", "Nom", "Date", "Type", "Prix", "Date d'achat"];
 	    
 		$cells = [];
+		$i = 0;
 		foreach($tickets as $ticket){
-			$cells[] = $ticket;
+			$new_ticket = [];
+			$new_ticket['id'] = $i;
+			$new_ticket = [
+			    'id' => $i,
+				'ticket_code'     => isset($ticket['ticket_code']) ? $ticket['ticket_code'] : null,
+				'user_first_name' => isset($ticket['user_first_name']) ? $ticket['user_first_name'] : null,
+				'user_last_name'  => isset($ticket['user_last_name']) ? $ticket['user_last_name'] : null,
+				'event_date'      => isset($ticket['event_date']) ? date('d/m/Y H:i:s', strtotime($ticket['event_date'])) : null,
+				'ticket_type'     => isset($ticket['ticket_type']) ? $ticket['ticket_type'] : null,
+				'ticket_price'    => isset($ticket['ticket_price']) ? $ticket['ticket_price'] : null,
+				'ticket_buy_date' => isset($ticket['ticket_buy_date']) ? $ticket['ticket_buy_date'] : null,
+			];
+			$cells[] = $new_ticket;
+			$i++;
 		}
 		
-		echo implode($separator, $entete) . "\r\n";
+		echo implode($separator, $head) . "\r\n";
 
         foreach ($cells as $cell) {
 	        echo implode($separator, $cell) . "\r\n";
@@ -129,7 +148,7 @@ class Main {
 	 *  
 	 *  @param array $codes Tableau contenant les codes valides
 	 */
-	public function setCodes($codes[]){
+	public function setCodes($codes){
 		$this->codes = $codes;
 	}
 	
@@ -150,7 +169,7 @@ class Main {
 	 *  
 	 *  @see genTickets()
 	 */
-	public function downloadTicket($file = null, $tickets[] = null){
+	public function downloadTicket($file = null, $tickets = null){
 		if($file != null){
 			$this->checkFile($file);
 		}else {

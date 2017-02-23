@@ -2,6 +2,8 @@
 /**
  *  Generator Class
  */
+
+namespace EventTicket;
  
 /**
  *  Cette classe permet de générer le(s) ticket(s) au format PDF
@@ -10,11 +12,13 @@
  *  @version 1.0
  *  @license CC-BY-NC-SA-4.0 Creative Commons Attribution Non Commercial Share Alike 4.0
  */
-class Generator extends FPDF {
+class Generator extends \FPDF {
 	
 	public $logo, $font = 'Arial';
 	
 	public function set() {
-		
+		$this->Image('logo.png', 10, 6, 30);
+		$this->SetFont('Arial','B',15);
+		$this->Cell(80);
 	}
 }
