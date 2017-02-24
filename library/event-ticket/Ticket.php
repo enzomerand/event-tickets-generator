@@ -81,6 +81,12 @@ class Ticket {
 		if(empty($tickets))
 			throw new \Exception('Il n\'y a pas de tickets.');
 		
+		if(isset($tickets['ticket_code'])){
+			$current_ticket = $tickets;
+			unset($tickets);
+			$tickets[] = $current_ticket;
+		}
+		
 		$tickets_code = [];
 		foreach($tickets as $ticket){
 			if(empty($ticket['ticket_code']))

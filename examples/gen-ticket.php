@@ -10,3 +10,5 @@
 	$ticket->event_location = $loc;
 
 	$ticket->setGenerator();
+	
+	$ticket->genTickets(['ticket_code' => '7A23923949', 'user_first_name' => 'Jean', 'user_last_name' => 'Dujardin', 'ticket_type' => 'EARLY BIRDS', 'ticket_price' => 22, 'ticket_buy_date' => '26/02/2017']);
