@@ -10,7 +10,7 @@ Fonctionnalités :
 
 Un exemple d'un ticket généré :
 
-![Billet exemple](assets/img/logo.png?raw=true)
+![Billet exemple](assets/img/example.PNG?raw=true)
 
 ## Pour commencer
 Pour initialiser la librairie, il faut créer une instance. Vous pouvez lui indiquer des paramètres comme le montre la documentation.
