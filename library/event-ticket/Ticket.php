@@ -43,15 +43,22 @@ class Ticket {
 	 *  Supprimer le dossier temporaire et son contenu
 	 */
 	private function cleanTemp(){
-		//rmdir('temp');
+		$files = glob('temp');
+		foreach($files as $file){
+		    if(is_file($file))
+			    unlink($file);
+		}
+		rmdir('temp');
 	}
 	
 	/**
 	 *  Initialiser le modèle du ticket au format PDF. Les paramètres généraux sont définit au préalable au sein de la classe
 	 */
 	public function setGenerator(){
-		$this->generator->event_logo = $this->event_logo;
-		$this->generator->event_name = $this->event_name;
+		$this->generator->event_logo      = $this->event_logo;
+		$this->generator->event_name      = $this->event_name;
+		$this->generator->event_location  = $this->event_location;
+		$this->generator->event_orga_name = $this->event_orga_name;
 	}
 	
 	/**
@@ -191,9 +198,13 @@ class Ticket {
 	 *  @param bool   $head      Permet de définir un en-tête propre ou un en-tête "prêt à importer" (valeur par défaut recommandée)
 	 *  @param string $separator Définit le séparateur pour les lignes (valeur par défaut recommandée)
 	 */
-	public function exportTickets($tickets, $head = true, $separator = ';'){
-		header("Content-Type: text/csv; charset=UTF-8");
-		header("Content-Disposition: attachment; filename=tickets.csv");
+	public function exportTickets($tickets, $download = true, $save = false, $head = true, $separator = ';'){
+		$filename = 'tickets' . rand(100, 999) . '.csv';
+		
+		if($download === true){
+			header("Content-Type: text/csv; charset=UTF-8");
+		    header("Content-Disposition: attachment; filename=" . $filename);
+		}
 		
 		$head = ($head === true) ? $head = ["id", "ticket_code", "user_first_name", "user_last_name", "event_date", "ticket_type", "ticket_price", "ticket_buy_date"] : ["", "Code", "Prénom", "Nom", "Date", "Type", "Prix", "Date d'achat"];
 	    
@@ -220,10 +231,25 @@ class Ticket {
 			$i++;
 		}
 		
-		echo implode($separator, $head) . "\r\n";
+		if($download === true){
+			echo implode($separator, $head) . "\r\n";
 
-        foreach ($cells as $cell)
-	        echo implode($separator, $cell) . "\r\n";
+			foreach ($cells as $cell)
+				echo implode($separator, $cell) . "\r\n";
+		}
+			
+		if($save === true || $download == false){
+			file_put_contents($filename, implode($separator, $head));
+			
+			$fp = fopen($filename, 'w');
+			
+			fputcsv($fp, $head);
+
+			foreach($cells as $cell)
+				fputcsv($fp, $cell);
+
+			fclose($fp);
+		}
 	}
 	
 	/**

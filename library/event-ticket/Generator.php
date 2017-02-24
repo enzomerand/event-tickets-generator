@@ -15,7 +15,7 @@ namespace EventTicket;
  */
 class Generator extends \FPDF {
 	
-	public $event_logo, $event_name, $font = 'Arial';
+	public $event_logo, $event_name, $event_location, $event_orga_name, $font = 'Arial';
 	
 	private $infos, $qr_code, $barcode;
 	
@@ -37,6 +37,7 @@ class Generator extends \FPDF {
 	 *  Template basique (par défaut)
 	 */
 	public function BasicTicket() {
+		$this->SetTextColor(000);
 		$this->SetFillColor(192);
 		$this->Rect(0, 40, 1000, 80, 'F');
 		
@@ -49,6 +50,31 @@ class Generator extends \FPDF {
 		
 		
 		$this->SetFont($this->font, 'B', 15);
-		$this->Cell(80);
+		$this->Text(10, 55, $this->infos->user_first_name . ' ' . $this->infos->user_last_name);
+		
+		$this->SetFont($this->font, '', 9);
+		$this->SetTextColor(75, 79, 86);
+		$this->Text(10, 60, $this->infos->ticket_type);
+		
+		$this->SetFont($this->font, 'B', 25);
+		$this->SetTextColor(255);
+		$this->Text(10, 72, $this->event_name);
+		
+		$this->SetFont($this->font, '', 10);
+		$this->SetTextColor(75, 79, 86);
+		$this->Text(10, 82, $this->event_location);
+		
+		$this->SetFillColor(75, 79, 86);
+		$this->Rect(10, 85, 110, 25, 'F');
+		$this->SetFillColor(119, 122, 125);
+		$this->Rect(10, 85, 35, 25, 'F');
+		$this->SetFont($this->font, 'B', 20);
+		$this->SetTextColor(255);
+		$this->Text(20, 100, $this->infos->ticket_price . chr(128));
+		$this->SetFont($this->font, '', 9);
+		$this->SetTextColor(255);
+		$this->Text(50, 93, 'Date d\'achat : ' . $this->infos->ticket_buy_date);
+		$this->Text(50, 99, 'N' . utf8_decode('°') . ' billet : ' . $this->infos->ticket_code);
+		$this->Text(50, 104, 'Organisateur : ' . $this->event_orga_name);
 	}
 }
