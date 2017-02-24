@@ -7,6 +7,7 @@ namespace EventTicket;
 
 use Endroid\QrCode\QrCode;
 use Picqer\Barcode\BarcodeGeneratorPNG;
+use \ZipArchive;
  
 /**
  *  Cette classe regroupe les fonctionnalitées principales de la librairie
@@ -26,7 +27,7 @@ class Ticket {
 	 */
 	public function __construct($event_logo = null, $event_name = null, $event_orga_name = null, $event_location = null){
 		$this->generator = new Generator;
-		$this->zip       = new \ZipArchive();
+		$this->zip       = new ZipArchive;
 		$this->qrcode    = new QrCode();
 		$this->barcode   = new BarcodeGeneratorPNG();
 		
@@ -35,7 +36,7 @@ class Ticket {
 		$this->event_orga_name = $event_orga_name;
 		$this->event_location  = $event_location;
 		
-		if(!is_dir('temp')) mkdir('temp');
+		if(!is_dir(TEMP)) mkdir(TEMP);
 		if(!is_dir('tickets')) mkdir('tickets');
 	}
 	
@@ -43,12 +44,12 @@ class Ticket {
 	 *  Supprimer le dossier temporaire et son contenu
 	 */
 	private function cleanTemp(){
-		$files = glob('temp');
+		$files = glob(TEMP . '*');
 		foreach($files as $file){
 		    if(is_file($file))
 			    unlink($file);
 		}
-		rmdir('temp');
+		rmdir(TEMP);
 	}
 	
 	/**
@@ -150,9 +151,9 @@ class Ticket {
 			->setImageType(QrCode::IMAGE_TYPE_PNG)
 		;
 
-		$this->qrcode->save("temp/{$ticket_code_file}.png");
+		$this->qrcode->save(TEMP . $ticket_code_file . '.png');
 		
-		return "temp/{$ticket_code_file}.png";
+		return TEMP . $ticket_code_file . '.png';
 	}
 	
 	/**
@@ -164,29 +165,44 @@ class Ticket {
 	 */
 	private function genBarCode($ticket_code){
 		$ticket_code_file = $ticket_code . rand();
-		file_put_contents("temp/{$ticket_code_file}.png", $this->barcode->getBarcode($ticket_code, $this->barcode::TYPE_CODE_128));
+		file_put_contents(TEMP . $ticket_code_file . '.png', $this->barcode->getBarcode($ticket_code, $this->barcode::TYPE_CODE_128));
 		
-		return "temp/{$ticket_code_file}.png";
+		return TEMP . $ticket_code_file . '.png';
 	}
 	
 	/**
 	 *  Importer un/des ticket(s) dans un tableau, issu(s) d'un fichier CSV
 	 *  
-	 *  @param string $file Chemin du fichier à importer
+	 *  @param string|array $file Chemin du fichier à importer
 	 */
 	public function importTickets($file){
 		$this->checkFile($file);
 		
 		$tickets = [];
 		$i = 1;
-		$file = fopen($file, 'r');
-		while (($line = fgetcsv($file)) !== FALSE){
-			if($i != 1)
-		        $tickets[] = $line;
-			
-			$i++;
+		if(is_array($file)){
+			foreach($file as $tickets){
+				$current_file = fopen($tickets, 'r');
+				while (($line = fgetcsv($tickets)) !== FALSE){
+					if($i != 1) // Pour supprimer l'en-tête
+						$tickets[] = $line;
+					
+					$i++;
+				}
+				fclose($tickets);
+				$i = 1;
+			}
+		}else {
+			$file = fopen($file, 'r');
+			while (($line = fgetcsv($file)) !== FALSE){
+				if($i != 1) // Pour supprimer l'en-tête
+					$tickets[] = $line;
+				
+				$i++;
+			}
+			fclose($file);
 		}
-		fclose($file);
+		
 		
 		return $tickets;
 	}
@@ -195,6 +211,8 @@ class Ticket {
 	 *  Exporter un/des ticket(s) au format CSV, issu(s) d'un tableau
 	 *  
 	 *  @param array  $tickets   Tableau contenant le(s) ticket(s)
+	 *  @param bool   $download  Définit si le fichier doit être directement téléchargé
+	 *  @param bool   $save      Définit si le fichier doit être sauvegardé (sans être téléchargé)
 	 *  @param bool   $head      Permet de définir un en-tête propre ou un en-tête "prêt à importer" (valeur par défaut recommandée)
 	 *  @param string $separator Définit le séparateur pour les lignes (valeur par défaut recommandée)
 	 */
@@ -278,17 +296,18 @@ class Ticket {
 	 *  
 	 *  @see genTickets()
 	 */
-	public function downloadTicket($file = null, $tickets = null){
+	public function downloadTickets($file = null, $tickets = null){
 		if($file != null)
-			$this->checkFile($file);
-		else
+			$this->checkFile($file, 'pdf');
+		elseif($tickets != null && is_array($tickets)){
 			$file = $this->genTickets($tickets);
+			$this->checkFile($file, 'pdf');
+		}else throw new \Exception('Rien n\'a été envoyé pour le téléchargement');
 		
 		if(is_array($file)){
-			$this->zip->open('tickets.zip', ZipArchive::CREATE);
-			foreach ($file as $tickets) {
-			  $zip->addFile($tickets);
-			}
+			$this->zip->open('tickets.zip', $this->zip::CREATE);
+			foreach ($file as $tickets)
+			    $this->zip->addFile($tickets);
 			$this->zip->close();
 			
 			header('Content-Type: application/zip');
@@ -298,24 +317,34 @@ class Ticket {
 		}else {
 			header("Content-type:application/pdf"); 
             header("Content-Disposition:attachment;filename='ticket.pdf'");
-            readfile($this->path_tickets . $file . '.pdf');
+            readfile('tickets/' . $file . '.pdf');
 		}
 	}
 	
 	/**
 	 *  Vérifier qu'un fichier existe et que son format est valide selon la demande
 	 *  
-	 *  @param string $file Chemin vers le fichier
-	 *  @param string $type Extension à vérifier
+	 *  @param string|array $file Chemin vers le fichier
+	 *  @param string       $type Extension à vérifier
 	 *  
 	 *  @return true
 	 */
 	private function checkFile($file, $type = 'csv'){
-		if(empty($file) && !file_exists($file))
-			throw new Exception('Le fichier n\'existe pas.');
-		
-		if(pathinfo($file, PATHINFO_EXTENSION) != $type)
-			throw new Exception("Le fichier à importer n'est pas au format {$type}.");
+		if(is_array($file)){
+			foreach($file as $ticket){
+				if(empty($ticket) && !file_exists('tickets/' . $ticket))
+			        throw new \Exception('Le fichier n\'existe pas.');
+				
+				if(pathinfo('tickets/' . $ticket, PATHINFO_EXTENSION) != $type)
+			        throw new \Exception("Le fichier n'est pas au format {$type}.");
+			}
+		}else {
+			if(empty($file) && !file_exists('tickets/' . $file))
+			    throw new \Exception('Le fichier n\'existe pas.');
+			
+			if(pathinfo('tickets/' . $file, PATHINFO_EXTENSION) != $type)
+			    throw new \Exception("Le fichier n'est pas au format {$type}.");
+		}
 		
 		return true;
 	}

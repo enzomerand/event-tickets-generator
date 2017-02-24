@@ -43,10 +43,10 @@ class Generator extends \FPDF {
 		
 		$this->Image($this->event_logo, 80, 13, 50);
 		
-		$this->Image($this->qr_code, 140, 50, 45);
-		$this->Image($this->barcode, 140, 100, 45);
+		$this->Image($this->qr_code, 140, 48, 45);
+		$this->Image($this->barcode, 140, 97, 45, 10);
 		$this->SetFont($this->font, '', 10);
-		$this->Text(140, 115, $this->infos->ticket_code);
+		$this->Text(140, 112, $this->infos->ticket_code);
 		
 		
 		$this->SetFont($this->font, 'B', 15);
@@ -67,14 +67,23 @@ class Generator extends \FPDF {
 		$this->SetFillColor(75, 79, 86);
 		$this->Rect(10, 85, 110, 25, 'F');
 		$this->SetFillColor(119, 122, 125);
-		$this->Rect(10, 85, 35, 25, 'F');
+		//$this->Rect(10, 85, 35, 25, 'F');
+		
 		$this->SetFont($this->font, 'B', 20);
 		$this->SetTextColor(255);
-		$this->Text(20, 100, $this->infos->ticket_price . chr(128));
+		$this->setXY(10, 85);
+		$this->Cell(35, 25, $this->infos->ticket_price . chr(128), 0, 0, 'C', true);
+		
 		$this->SetFont($this->font, '', 9);
 		$this->SetTextColor(255);
-		$this->Text(50, 93, 'Date d\'achat : ' . $this->infos->ticket_buy_date);
-		$this->Text(50, 99, 'N' . utf8_decode('°') . ' billet : ' . $this->infos->ticket_code);
-		$this->Text(50, 104, 'Organisateur : ' . $this->event_orga_name);
+		
+		$this->setXY(48, 88);
+		$this->Cell(73, 8.3, 'Date d\'achat : ' . $this->infos->ticket_buy_date);
+		
+		$this->setXY(48, 93.3);
+		$this->Cell(73, 8.3, 'N' . utf8_decode('°') . ' billet : ' . $this->infos->ticket_code);
+		
+		$this->setXY(48, 98.6);
+		$this->Cell(73, 8.3, 'Organisateur : ' . $this->event_orga_name);
 	}
 }

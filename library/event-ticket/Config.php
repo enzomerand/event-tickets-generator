@@ -1,6 +1,9 @@
 <?php
 
     //namespace EventTciket;
+	
+	define('ROOT', dirname(__DIR__) . '/event-ticket/');
+	define('TEMP', ROOT . 'temp/');
 
     require('../library/fpdf/fpdf.php');
 	require('../library/php-barcode-generator/src/BarcodeGenerator.php');

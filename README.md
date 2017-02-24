@@ -10,10 +10,7 @@ Event Ticket Generator vous permet de générer des billets au format PDF, les e
 - Ajout d'erreurs formattées (retour d'un texte uniquement)
 - Ajout de codes d'erreurs
 - Ajout d'un champ site web
-- Définir le chemin exacte du dossier des tickets et du dossier temporire
 
 Bugs actuels :
 - Exportation de la date
-- Taille du code-barre qui varie sur le billet
-- Correction des alignements sur le PDF
-- Fonction cleanTemp() ne semble pas fonctionner
+- Le téléchargement renvoi des fichiers corrompus
