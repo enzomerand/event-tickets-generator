@@ -29,14 +29,12 @@ $ticket->setGenerator();
 - Traductions
 - Lien QrCode
 - Encodage automatique avant de générer le PDF
-- Ajout de l'heure et de la date de l'événement sur le billet, correctement formattés
-- Ajout d'erreurs formattées (retour d'un texte uniquement)
+- Ajout de l'heure et de la date de l'événement sur le billet, correctement formatés
+- Ajout d'erreurs formatées (retour d'un texte uniquement)
 - Ajout de codes d'erreurs
 - Ajout d'un champ site web
 
 Bugs actuels :
-- Exportation de la date
-- Le téléchargement renvoi des fichiers corrompus
-- Mettre le type de ticket en majuscule automatiquement
+- Affichage des prix sous le bon format, nottament avec les nombres décimaux dans l'exportation (fichier excel)
 
 N'hésitez pas à proposer des nouveautés, suggérer, etc...

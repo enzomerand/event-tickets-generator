@@ -2,7 +2,6 @@
 /**
  *  Ticket Class
  */
-
 namespace EventTicket;
 
 use Endroid\QrCode\QrCode;
@@ -103,7 +102,7 @@ class Ticket {
 				'user_first_name' => isset($ticket['user_first_name']) ? $ticket['user_first_name'] : 'N/A',
 				'user_last_name'  => isset($ticket['user_last_name']) ? $ticket['user_last_name'] : 'N/A',
 				'event_date'      => isset($ticket['event_date']) ? date('d/m/Y H:i:s', strtotime($ticket['event_date'])) : 'N/A',
-				'ticket_type'     => isset($ticket['ticket_type']) ? $ticket['ticket_type'] : 'N/A',
+				'ticket_type'     => isset($ticket['ticket_type']) ? strtoupper($ticket['ticket_type']) : 'N/A',
 				'ticket_price'    => isset($ticket['ticket_price']) ? $ticket['ticket_price'] : 'N/A',
 				'ticket_buy_date' => isset($ticket['ticket_buy_date']) ? $ticket['ticket_buy_date'] : 'N/A',
 			];
@@ -218,7 +217,7 @@ class Ticket {
 	 *  
 	 *  @param array  $tickets   Tableau contenant le(s) ticket(s)
 	 *  @param bool   $download  Définit si le fichier doit être directement téléchargé
-	 *  @param bool   $save      Définit si le fichier doit être sauvegardé (sans être téléchargé)
+	 *  @param bool   $save      Définit si le fichier doit être sauvegardé sur le serveur (sans être téléchargé)
 	 *  @param bool   $head      Permet de définir un en-tête propre ou un en-tête "prêt à importer" (valeur par défaut recommandée)
 	 *  @param string $separator Définit le séparateur pour les lignes (valeur par défaut recommandée)
 	 */
@@ -246,10 +245,10 @@ class Ticket {
 				'ticket_code'     => isset($ticket['ticket_code']) ? $ticket['ticket_code'] : null,
 				'user_first_name' => isset($ticket['user_first_name']) ? $ticket['user_first_name'] : null,
 				'user_last_name'  => isset($ticket['user_last_name']) ? $ticket['user_last_name'] : null,
-				'event_date'      => isset($ticket['event_date']) ? date('d/m/Y H:i:s', strtotime($ticket['event_date'])) : null,
+				'event_date'      => isset($ticket['event_date']) ? date('d/m/Y', strtotime($ticket['event_date'])) : null,
 				'ticket_type'     => isset($ticket['ticket_type']) ? $ticket['ticket_type'] : null,
 				'ticket_price'    => isset($ticket['ticket_price']) ? $ticket['ticket_price'] : null,
-				'ticket_buy_date' => isset($ticket['ticket_buy_date']) ? $ticket['ticket_buy_date'] : null,
+				'ticket_buy_date' => isset($ticket['ticket_buy_date']) ?  date('d/m/Y', strtotime($ticket['ticket_buy_date'])) : null,
 			];
 			$cells[] = $new_ticket;
 			$i++;
@@ -310,20 +309,42 @@ class Ticket {
 			$this->checkFile($file, 'pdf');
 		}else throw new \Exception('Rien n\'a été envoyé pour le téléchargement');
 		
+		header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
+		header('Content-Description: File Transfer');
+		header('Connection: Keep-Alive');
+        header('Expires: 0');
+		header('Pragma: public');
+		
 		if(is_array($file)){
-			$this->zip->open('tickets.zip', $this->zip::CREATE);
-			foreach ($file as $tickets)
-			    $this->zip->addFile($tickets);
+			$this->zip->open('tickets/tickets.zip', $this->zip::CREATE);
+			foreach ($file as $tickets){
+				$this->checkFile($tickets, 'pdf');
+				$this->zip->addFile('tickets/' . $tickets);
+			}
 			$this->zip->close();
+			
+			$file = 'tickets/tickets.zip';
 			
 			header('Content-Type: application/zip');
 			header("Content-disposition: attachment; filename='tickets.zip'");
-			header('Content-Length: ' . filesize('tickets.zip'));
-			readfile('tickets.zip');
+			header('Content-Length: ' . filesize($file));
+			readfile($file);
 		}else {
-			header("Content-type:application/pdf"); 
+			$file = 'tickets/' . $file;
+			// Vérifie que le .pdf est bien présent, sinon on le rajoute
+			if(substr($file, -4) != '.pdf')
+				$file = $file . '.pdf';
+			
+			header('Content-Type: application/octetstream');
+            header("Content-Transfer-Encoding: Binary"); 
+			header("Content-length: " . filesize($file));
             header("Content-Disposition:attachment;filename='ticket.pdf'");
-            readfile('tickets/' . $file . '.pdf');
+            readfile($file);
+		}
+		
+		ignore_user_abort(true);
+		if(connection_aborted()){
+			unlink($file);
 		}
 	}
 	
@@ -335,20 +356,26 @@ class Ticket {
 	 *  
 	 *  @return true
 	 */
-	private function checkFile($file, $type = 'csv'){
+	private function checkFile($file, $type = 'csv', $path = 'tickets'){
+		if($path != null)
+			$path = $path . '/';
+		
 		if(is_array($file)){
 			foreach($file as $ticket){
-				if(empty($ticket) && !file_exists('tickets/' . $ticket))
+				if(empty($ticket) && !file_exists($path . $ticket))
 			        throw new \Exception('Le fichier n\'existe pas.');
 				
-				if(pathinfo('tickets/' . $ticket, PATHINFO_EXTENSION) != $type)
+				if(pathinfo($path . $ticket, PATHINFO_EXTENSION) != $type)
 			        throw new \Exception("Le fichier n'est pas au format {$type}.");
 			}
 		}else {
-			if(empty($file) && !file_exists('tickets/' . $file))
+			if(substr($file, -4) != '.' . $type)
+				$file = $path . $file . '.' . $type;
+			
+			if(empty($file) && !file_exists($path . $file))
 			    throw new \Exception('Le fichier n\'existe pas.');
 			
-			if(pathinfo('tickets/' . $file, PATHINFO_EXTENSION) != $type)
+			if(pathinfo($path . $file, PATHINFO_EXTENSION) != $type)
 			    throw new \Exception("Le fichier n'est pas au format {$type}.");
 		}
 		
