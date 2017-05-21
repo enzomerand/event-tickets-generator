@@ -5,7 +5,7 @@ Fonctionnalités :
 - Générer un ou plusieurs tickets au format PDF, dans un ou plusieurs fichiers et choisir (si un seul fichier) de l'afficher directement dans le naviguateur
 - Importer des tickets à partir d'un fichier CSV
 - Exporter des tickets au format CSV
-- Télécharger un ou plusiquers tickets
+- Télécharger un ou plusieurs tickets
 - Définir une authencité de tickets via une vérification des codes de tickets
 
 Un exemple d'un ticket généré :
