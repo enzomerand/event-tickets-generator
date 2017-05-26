@@ -12,7 +12,7 @@ use \ZipArchive;
  *  Cette classe regroupe les fonctionnalitées principales de la librairie
  *  
  *  @author  Nyzo
- *  @version 1.0
+ *  @version 1.0.1
  *  @license CC-BY-NC-SA-4.0 Creative Commons Attribution Non Commercial Share Alike 4.0
  */
 class Ticket {
