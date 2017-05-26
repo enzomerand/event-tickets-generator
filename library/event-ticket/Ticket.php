@@ -17,18 +17,24 @@ use \ZipArchive;
  */
 class Ticket {
 	
-	private $importer, $generator, $codes, $zip, $qrcode, $barcode;
+	private $generator, $codes, $zip, $qrcode, $barcode, $error;
 	
-	public $event_logo, $event_name, $event_orga_name, $event_location, $path_tickets = 'tickets';
+	public $event_logo, $event_name, $event_orga_name, $event_location, $path_tickets = 'tickets', $use_qr_links = false;
 	
 	/**
 	 *  Initialiser la classe et charger les librairies. Certains paramètres généraux relatifs aux tickets peuvent être définit
 	 */
-	public function __construct($event_logo = null, $event_name = null, $event_orga_name = null, $event_location = null){
+	public function __construct($lang, $event_logo = null, $event_name = null, $event_orga_name = null, $event_location = null){
+		putenv('LC_ALL=' . $lang);
+        setlocale(LC_ALL, $lang);
+		bindtextdomain('eventTickets', "/lang");
+		textdomain("eventTickets");
+		
 		$this->generator = new Generator;
 		$this->zip       = new ZipArchive;
 		$this->qrcode    = new QrCode();
 		$this->barcode   = new BarcodeGeneratorPNG();
+		$this->error     = new Error($lang);
 		
 		$this->event_logo      = $event_logo;
 		$this->event_name      = $event_name;
@@ -68,17 +74,18 @@ class Ticket {
 	 *  @param bool   $multiple_file   Permet d'enregistrer sous plusieurs fichiers chaque billets (pas de rendu)
 	 *  @param bool   $display         Rendu direct du PDF (affichage dans la naviguateur en appelant la fonction)
 	 *  @param string $ticket_template Template du ticket à utiliser
+	 *  @param bool   $use_qr_links    Permet d'assigner le lien définit dans le ticket au code Qr, il est possible de définir ce paramètre en général ($this->use_qr_links)
 	 *  
 	 *  return array Retourne le code de chaque ticket généré ainsi que l'information si les tickets sont dans un seul fichiers ou plusieurs
 	 */
-	public function genTickets($tickets, $multiple_file = false, $display = true, $ticket_template = 'BasicTicket'){
+	public function genTickets($tickets, $multiple_file = false, $display = true, $ticket_template = 'BasicTicket', $use_qr_links = false){
 		$this->setGenerator();
 		
 		if(!method_exists($this->generator, $ticket_template))
-			throw new \Exception('Le template n\'existe pas.');
+			$this->error->echoError(1);
 		
 		if(empty($tickets))
-			throw new \Exception('Il n\'y a pas de tickets.');
+			$this->error->echoError(2);
 		
 		if(isset($tickets['ticket_code'])){
 			$current_ticket = $tickets;
@@ -89,12 +96,15 @@ class Ticket {
 		$tickets_code = [];
 		foreach($tickets as $ticket){
 			if(empty($ticket['ticket_code']))
-			    throw new \Exception('Le ticket n\'a pas de code.');
+			    $this->error->echoError(3);
 		
 			if(!empty($this->codes)){
 				if(!in_array($ticket['ticket_code'], $this->codes))
-					throw new \Exception('Des codes de tickets sont définis mais le ticket actuel n\'en a pas ou le code n\'est pas valide.');
+					$this->error->echoError(4);
 			}
+			
+			if($this->use_qr_links === true || $use_qr_links === true)
+				$qr_type = (isset($ticket['link_validation']) && !filter_var($ticket['link_validation'], FILTER_VALIDATE_URL) === false) ? $ticket['link_validation'] : $ticket['ticket_code'];
 			
 			$new_ticket = [];
 			$new_ticket = [
@@ -105,10 +115,11 @@ class Ticket {
 				'ticket_type'     => isset($ticket['ticket_type']) ? strtoupper($ticket['ticket_type']) : 'N/A',
 				'ticket_price'    => isset($ticket['ticket_price']) ? $ticket['ticket_price'] : 'N/A',
 				'ticket_buy_date' => isset($ticket['ticket_buy_date']) ? $ticket['ticket_buy_date'] : 'N/A',
+				'link_validation' => isset($ticket['link_validation']) ? $ticket['link_validation'] : 'N/A',
 			];
 			$ticket = $new_ticket;
 			
-			$this->generator->setInformations($ticket, $this->genQrCode($ticket['ticket_code']), $this->genBarCode($ticket['ticket_code']));
+			$this->generator->setInformations($ticket, $this->genQrCode($qr_type), $this->genBarCode($ticket['ticket_code']));
 			$this->generator->AddPage();
 			$this->generator->$ticket_template();
 			
@@ -139,15 +150,14 @@ class Ticket {
 	/**
 	 *  Générer un QrCode
 	 *  
-	 *  @param string|int  $ticket_code Code du ticket
-	 *  @param string|bool $link        Lien du QrCode (si le QrCode doit retourner vers un lien)
+	 *  @param string|int $data Code du ticket ou lien de validation
 	 *  
 	 *  @return string Lien image du QrCode
 	 */
-	private function genQrCode($ticket_code, $link = false){
-		$ticket_code_file = $ticket_code . rand();
+	private function genQrCode($data){
+		$ticket_code_file = is_int($data) ? $data . rand() : rand();
 		$this->qrcode
-			->setText($ticket_code)
+			->setText($data)
 			->setSize(200)
 			->setPadding(20)
 			->setErrorCorrection('high')
@@ -236,7 +246,7 @@ class Ticket {
 		foreach($tickets as $ticket){
 			if(!empty($this->codes)){
 				if(!in_array($ticket['ticket_code'], $this->codes))
-					throw new \Exception('Des codes de tickets sont définis mais le ticket actuel n\'en a pas ou le code n\'est pas valide.');
+					$this->error->echoError(4);
 			}
 			$new_ticket = [];
 			$new_ticket['id'] = $i;
@@ -307,7 +317,7 @@ class Ticket {
 		elseif($tickets != null && is_array($tickets)){
 			$file = $this->genTickets($tickets);
 			$this->checkFile($file, 'pdf');
-		}else throw new \Exception('Rien n\'a été envoyé pour le téléchargement');
+		}else $this->error->echoError(5);
 		
 		header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
 		header('Content-Description: File Transfer');
@@ -363,20 +373,20 @@ class Ticket {
 		if(is_array($file)){
 			foreach($file as $ticket){
 				if(empty($ticket) && !file_exists($path . $ticket))
-			        throw new \Exception('Le fichier n\'existe pas.');
+			        $this->error->echoError(6);
 				
 				if(pathinfo($path . $ticket, PATHINFO_EXTENSION) != $type)
-			        throw new \Exception("Le fichier n'est pas au format {$type}.");
+			        $this->error->echoError(7, [$type]);
 			}
 		}else {
 			if(substr($file, -4) != '.' . $type)
 				$file = $path . $file . '.' . $type;
 			
 			if(empty($file) && !file_exists($path . $file))
-			    throw new \Exception('Le fichier n\'existe pas.');
+			    $this->error->echoError(6);
 			
 			if(pathinfo($path . $file, PATHINFO_EXTENSION) != $type)
-			    throw new \Exception("Le fichier n'est pas au format {$type}.");
+			    $this->error->echoError(7, [$type]);
 		}
 		
 		return true;

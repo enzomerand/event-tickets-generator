@@ -27,11 +27,8 @@ $ticket->setGenerator();
 À venir :
 - Ajout des CGV en bas du billets
 - Traductions
-- Lien QrCode
 - Encodage automatique avant de générer le PDF
 - Ajout de l'heure et de la date de l'événement sur le billet, correctement formatés
-- Ajout d'erreurs formatées (retour d'un texte uniquement)
-- Ajout de codes d'erreurs
 - Ajout d'un champ site web
 
 Bugs actuels :

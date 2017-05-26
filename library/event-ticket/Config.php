@@ -1,6 +1,4 @@
 <?php
-
-    //namespace EventTciket;
 	
 	define('ROOT', dirname(__DIR__) . '/event-ticket/');
 	define('TEMP', ROOT . 'temp/');
@@ -11,3 +9,4 @@
 	require('../library/QrCode/src/QrCode.php');
     require('../library/event-ticket/Ticket.php');
 	require('../library/event-ticket/Generator.php');
+	require('../library/event-ticket/Error.php');
