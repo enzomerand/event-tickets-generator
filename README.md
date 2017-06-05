@@ -1,4 +1,7 @@
 # Event Ticket Generator
+
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/fef0bf5b8dcc45449eb09c0d102bad67)](https://www.codacy.com/app/enzo7337/event-tickets-generator?utm_source=github.com&utm_medium=referral&utm_content=Nyzo/event-tickets-generator&utm_campaign=badger)
+
 Event Ticket Generator vous permet de générer des billets au format PDF, les exporter au format CSV ou importer des billets pour des événements.
 
 Fonctionnalités :
