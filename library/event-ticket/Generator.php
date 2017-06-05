@@ -10,7 +10,7 @@ namespace EventTicket;
  *  Des fonctions peuvent être créées, chaque fonction représente un template
  *  
  *  @author  Nyzo
- *  @version 1.0.1
+ *  @version 1.0.2
  *  @license CC-BY-NC-SA-4.0 Creative Commons Attribution Non Commercial Share Alike 4.0
  */
 class Generator extends \FPDF {
@@ -37,6 +37,8 @@ class Generator extends \FPDF {
 	 *  Template basique (par défaut)
 	 */
 	public function BasicTicket() {
+		$date = explode(' ', $this->infos->event_date)[0] != 'N/A' ? explode(' ', $this->infos->event_date)[0] . ' @ ' . explode(':', explode(' ', $this->infos->event_date)[1])[0] . 'h' . explode(':', explode(' ', $this->infos->event_date)[1])[1] . ' - ' : '';
+		
 		$this->SetTextColor(000);
 		$this->SetFillColor(192);
 		$this->Rect(0, 40, 1000, 80, 'F');
@@ -54,7 +56,7 @@ class Generator extends \FPDF {
 		
 		$this->SetFont($this->font, '', 9);
 		$this->SetTextColor(75, 79, 86);
-		$this->Text(10, 60, $this->infos->ticket_type);
+		$this->Text(10, 60, $date . $this->infos->ticket_type);
 		
 		$this->SetFont($this->font, 'B', 25);
 		$this->SetTextColor(255);

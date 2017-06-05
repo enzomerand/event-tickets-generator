@@ -12,7 +12,7 @@ use \ZipArchive;
  *  Cette classe regroupe les fonctionnalitées principales de la librairie
  *  
  *  @author  Nyzo
- *  @version 1.0.1
+ *  @version 1.0.2
  *  @license CC-BY-NC-SA-4.0 Creative Commons Attribution Non Commercial Share Alike 4.0
  */
 class Ticket {
@@ -106,18 +106,7 @@ class Ticket {
 			if($this->use_qr_links === true || $use_qr_links === true)
 				$qr_type = (isset($ticket['link_validation']) && !filter_var($ticket['link_validation'], FILTER_VALIDATE_URL) === false) ? $ticket['link_validation'] : $ticket['ticket_code'];
 			
-			$new_ticket = [];
-			$new_ticket = [
-				'ticket_code'     => $ticket['ticket_code'],
-				'user_first_name' => isset($ticket['user_first_name']) ? $ticket['user_first_name'] : 'N/A',
-				'user_last_name'  => isset($ticket['user_last_name']) ? $ticket['user_last_name'] : 'N/A',
-				'event_date'      => isset($ticket['event_date']) ? date('d/m/Y H:i:s', strtotime($ticket['event_date'])) : 'N/A',
-				'ticket_type'     => isset($ticket['ticket_type']) ? strtoupper($ticket['ticket_type']) : 'N/A',
-				'ticket_price'    => isset($ticket['ticket_price']) ? $ticket['ticket_price'] : 'N/A',
-				'ticket_buy_date' => isset($ticket['ticket_buy_date']) ? $ticket['ticket_buy_date'] : 'N/A',
-				'link_validation' => isset($ticket['link_validation']) ? $ticket['link_validation'] : 'N/A',
-			];
-			$ticket = $new_ticket;
+			$ticket = $this->cleanTicket($ticket);
 			
 			$this->generator->setInformations($ticket, $this->genQrCode($qr_type), $this->genBarCode($ticket['ticket_code']));
 			$this->generator->AddPage();
@@ -174,7 +163,7 @@ class Ticket {
 	/**
 	 *  Générer un code-barre
 	 *  
-	 *  @param string|int  $ticket_code Code du ticket
+	 *  @param string|int $ticket_code Code du ticket
 	 *  
 	 *  @return string Lien image du code-barre
 	 */
@@ -186,36 +175,102 @@ class Ticket {
 	}
 	
 	/**
+	 *  Recréer un ticket normé au script
+	 *  
+	 *  @param array $ticket Ticket(s)
+	 *  
+	 *  @return string Ticket correctement formatté
+	 */
+	private function cleanTicket($ticket){
+		if(!is_array($ticket))
+			$this->error->echoError(8);
+		
+		// Propriétés d'un ticket-type
+		$vars = ['ticket_code', 'user_id', 'user_first_name', 'user_last_name', 'event_date', 'ticket_type', 'ticket_price', 'ticket_buy_date', 'link_validation'];
+		
+		// Propriétés d'un ticket-type (et les possibiltées)
+		$ticket_code     = ['ticket_code', 'code', 'code_ticket', 'code_billet', 'billet_code'];
+		$user_id         = ['user_id', 'id_user', 'uid', 'u_id', 'id'];
+		$user_first_name = ['user_first_name', 'firstname', 'first_name', 'prenom', 'name'];
+		$user_last_name  = ['user_last_name', 'lastname', 'last_name', 'nom'];
+		$event_date      = ['event_date', 'eventdate', 'date', 'dateevent', 'date_event', 'date_evenement', 'dateevenement', 'evenement_date', 'evenementdate'];
+		$ticket_type     = ['ticket_type', 'type_ticket', 'tickettype', 'typeticket', 'type', 'type_billet', 'billet_type', 'typebillet', 'billettype'];
+		$ticket_price    = ['ticket_price', 'price_ticket', 'price', 'ticketprice', 'priceticket', 'prix', 'billet_prix', 'prix_billet', 'billetprix', 'prixbillet'];
+		$ticket_buy_date = ['ticket_buy_date', 'ticket_buy', 'ticketbuydate', 'buy_date', 'buydate', 'date_buy', 'date_achat', 'date_achat_billet'];
+		$link_validation = ['link_validation', 'link', 'lien_validation', 'validation', 'lien', 'validation_lien', 'lienvalidation', 'validation', 'valid', 'validation_link'];
+		
+		foreach($vars as $var){
+			if(isset($var) && is_array(${$var})){
+				foreach(${$var} as $propretie){
+					if(array_key_exists($propretie, $ticket))
+						${$var} = $ticket[$propretie];
+				}
+			}
+		}
+		
+		$new_ticket = [];
+		$new_ticket = [
+			'ticket_code'     => !is_array($ticket_code) ? $ticket_code : 'N/A',
+			'user_first_name' => !is_array($user_first_name) ? $user_first_name : 'N/A',
+			'user_last_name'  => !is_array($user_last_name) ? $user_last_name : 'N/A',
+			'event_date'      => !is_array($event_date) ? date('d/m/Y H:i:s', strtotime($event_date)) : 'N/A',
+			'ticket_type'     => !is_array($ticket_type) ? strtoupper($ticket_type) : 'N/A',
+			'ticket_price'    => !is_array($ticket_price) ? $ticket_price : 'N/A',
+			'ticket_buy_date' => !is_array($ticket_buy_date) ? $ticket_buy_date : 'N/A',
+			'link_validation' => !is_array($link_validation) ? $link_validation : 'N/A',
+		];
+		return $new_ticket;
+	}
+	
+	/**
 	 *  Importer un/des ticket(s) dans un tableau, issu(s) d'un fichier CSV
 	 *  
 	 *  @param string|array $file Chemin du fichier à importer
+	 *
+	 *  @return string Ticket importés et normés
 	 */
 	public function importTickets($file){
-		$this->checkFile($file);
+		$this->checkFile($file, ['csv', 'xlsx']);
 		
 		$tickets = [];
 		$i = 1;
+		$j = 0;
 		if(is_array($file)){
-			foreach($file as $tickets){
-				$current_file = fopen($tickets, 'r');
-				while (($line = fgetcsv($tickets)) !== FALSE){
-					if($i != 1) // Pour supprimer l'en-tête
-						$tickets[] = $line;
-					
-					$i++;
+			foreach($file as $current_file){
+				$temp_tickets = [];
+				$current_file = fopen($current_file, 'r');
+				while(($line = fgetcsv($current_file)) !== FALSE){
+					$line = array_map("utf8_encode", $line);
+					if($i == 1)
+						$head = explode(';', $line[0]);
+					else // Supprime l'en-tête
+						$temp_tickets[] = array_combine($head, array_values(explode(';', $line[0])));
+					++$i;
 				}
-				fclose($tickets);
-				$i = 1;
+				fclose($current_file);
+				
+				foreach($temp_tickets as $ticket){
+					$tickets[$j] = $this->cleanTicket($ticket);
+					++$j;
+				}
 			}
 		}else {
 			$file = fopen($file, 'r');
-			while (($line = fgetcsv($file)) !== FALSE){
-				if($i != 1) // Pour supprimer l'en-tête
-					$tickets[] = $line;
-				
-				$i++;
+			while(($line = fgetcsv($file)) !== FALSE){
+				$line = array_map("utf8_encode", $line);
+				if($i == 1)
+					$head = explode(';', $line[0]);
+				else // Supprime l'en-tête
+					$tickets[] = array_combine($head, array_values(explode(';', $line[0])));
+				++$i;
 			}
 			fclose($file);
+			
+			$i = 0;
+			foreach($tickets as $ticket){
+				$tickets[$i] = $this->cleanTicket($ticket);
+				++$i;
+			}
 		}
 		
 		
@@ -362,7 +417,8 @@ class Ticket {
 	 *  Vérifier qu'un fichier existe et que son format est valide selon la demande
 	 *  
 	 *  @param string|array $file Chemin vers le fichier
-	 *  @param string       $type Extension à vérifier
+	 *  @param string|array $type Extension à vérifier
+	 *  @param string       $path Dossier contenant le(s) fichier(s)
 	 *  
 	 *  @return true
 	 */
@@ -375,18 +431,21 @@ class Ticket {
 				if(empty($ticket) && !file_exists($path . $ticket))
 			        $this->error->echoError(6);
 				
-				if(pathinfo($path . $ticket, PATHINFO_EXTENSION) != $type)
+				if(is_array($type)){
+					if(!in_array(pathinfo($path . $ticket, PATHINFO_EXTENSION), $type))
+						$this->error->echoError(7, [$type]);
+				}elseif(pathinfo($path . $ticket, PATHINFO_EXTENSION) != $type)
 			        $this->error->echoError(7, [$type]);
 			}
 		}else {
-			if(substr($file, -4) != '.' . $type)
-				$file = $path . $file . '.' . $type;
-			
 			if(empty($file) && !file_exists($path . $file))
 			    $this->error->echoError(6);
 			
-			if(pathinfo($path . $file, PATHINFO_EXTENSION) != $type)
-			    $this->error->echoError(7, [$type]);
+			if(is_array($type)){
+				if(!in_array(pathinfo($path . $file, PATHINFO_EXTENSION), $type))
+					$this->error->echoError(7, [$type]);
+			}elseif(pathinfo($path . $file, PATHINFO_EXTENSION) != $type)
+				$this->error->echoError(7, [$type]);
 		}
 		
 		return true;

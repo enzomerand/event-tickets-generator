@@ -5,3 +5,4 @@ Des codes de tickets sont définis mais le ticket actuel n'en a pas ou le code n
 Rien n'a été envoyé pour le téléchargement.
 Le fichier n'existe pas.
 Le fichier n'est pas au format %s.
+Le(s) ticket(s) doit(vent) être(s) de type tableau (array) pour pouvoir le(s) normé(s).

@@ -14,6 +14,7 @@
 	$ticket->setGenerator();
 	
 	$ticket->genTickets([['ticket_code' => '1519596289', 'link_validation' => 'http://superboomrecords.fr', 'user_first_name' => 'Jean', 'event_date' => '12/06/2017', 'user_last_name' => 'Dujardin', 'ticket_type' => 'early birds', 'ticket_price' => 22, 'ticket_buy_date' => '26/02/2017'], ['ticket_code' => '7A23923950', 'user_first_name' => 'Michel', 'user_last_name' => 'Dubardin', 'ticket_type' => 'PASS 2 J', 'ticket_price' => 55.5, 'ticket_buy_date' => '26/02/2017']]);
+	//$ticket->importTickets(['tickets-import.csv', 'tickets-import2.csv']);
 	//$ticket->downloadTickets('7A23923949');
 	
 	//$ticket->exportTickets([['ticket_code' => '7A23923949', 'event_date' => '12/06/2017', 'user_first_name' => 'Jean', 'user_last_name' => 'Dujardin', 'ticket_type' => 'early birds', 'ticket_price' => 22, 'ticket_buy_date' => '26/02/2017'], ['ticket_code' => '7A23923950', 'user_first_name' => 'Michel', 'user_last_name' => 'Dubardin', 'ticket_type' => 'PASS 2 J', 'ticket_price' => 55.5, 'ticket_buy_date' => '26/02/2017']]);
