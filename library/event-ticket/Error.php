@@ -9,7 +9,7 @@ namespace EventTicket;
  *  Cette classe gère et formatte les erreurs
  *  
  *  @author  Nyzo
- *  @version 1.0.2
+ *  @version 1.1.1
  *  @license CC-BY-NC-SA-4.0 Creative Commons Attribution Non Commercial Share Alike 4.0
  */
 class Error {
@@ -43,11 +43,12 @@ class Error {
      * @param  int    $code   Code de l'erreur
      * @param  array  $vars   Variables dynamiques à passer
      * @param  string $end    Dernier caractère de la chaîne
+	 *
      * @return string
      */
     public function getError($code, $vars = []){
         if(!file_exists($this->error_file)){
-            return "Erreur ! Le fichier d'erreur \"$this->error_file\" est introuvable.";
+            return "Erreur ! Le fichier d'erreur \"{$this->error_file}\" est introuvable.";
         }
 
         if(ctype_digit($code) || is_int($code)){
@@ -66,7 +67,7 @@ class Error {
 	        return trim($error);
 		}
 		
-		exit;
+		exit();
     }
 
 	/**

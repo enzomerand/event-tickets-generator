@@ -4,3 +4,6 @@
 [submodule "QrCode"]
 	path = library/QrCode
 	url = git://github.com/endroid/QrCode.git
+[submodule "library/PHP_XLSXWriter"]
+	path = library/PHP_XLSXWriter
+	url = https://github.com/mk-j/PHP_XLSXWriter.git

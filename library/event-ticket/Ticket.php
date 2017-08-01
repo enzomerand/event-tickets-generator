@@ -12,19 +12,21 @@ use \ZipArchive;
  *  Cette classe regroupe les fonctionnalitées principales de la librairie
  *  
  *  @author  Nyzo
- *  @version 1.0.2
+ *  @version 1.1.1
  *  @license CC-BY-NC-SA-4.0 Creative Commons Attribution Non Commercial Share Alike 4.0
  */
 class Ticket {
 	
-	private $generator, $codes, $zip, $qrcode, $barcode, $error;
+	private $generator, $codes, $zip, $qrcode, $barcode, $error, $path_tickets = 'tickets', $use_qr_links = false;
 	
-	public $event_logo, $event_name, $event_orga_name, $event_location, $path_tickets = 'tickets', $use_qr_links = false;
+	private $event = ['event_logo' => null, 'event_name' => null, 'event_orga_name' => null, 'event_location' => null, 'event_date' => null];
 	
 	/**
 	 *  Initialiser la classe et charger les librairies. Certains paramètres généraux relatifs aux tickets peuvent être définit
+	 *
+	 *  @param string $lang Définit la langue à utiliser pour le script
 	 */
-	public function __construct($lang, $event_logo = null, $event_name = null, $event_orga_name = null, $event_location = null){
+	public function __construct($lang = 'fr-FR'){
 		putenv('LC_ALL=' . $lang);
         setlocale(LC_ALL, $lang);
 		bindtextdomain('eventTickets', "/lang");
@@ -36,14 +38,21 @@ class Ticket {
 		$this->barcode   = new BarcodeGeneratorPNG();
 		$this->error     = new Error($lang);
 		
-		$this->event_logo      = $event_logo;
-		$this->event_name      = $event_name;
-		$this->event_orga_name = $event_orga_name;
-		$this->event_location  = $event_location;
-		
 		if(!is_dir(TEMP)) mkdir(TEMP);
 		if(!is_dir('tickets')) mkdir('tickets');
 	}
+	
+	/**
+	 * Définir des variables concernant l'événement
+	 *
+	 * @param string $varName Définit le nom de la variable
+	 * @param string $value   Assigne une valeur à la variable
+	 */
+	public function __set($varName, $value = null){
+		if($varName == 'event_date')
+			$this->event[$varName] = date('d/m/Y H:i:s', strtotime($value));
+        $this->event[$varName] = $value;
+    }
 	
 	/**
 	 *  Supprimer le dossier temporaire et son contenu
@@ -59,12 +68,12 @@ class Ticket {
 	
 	/**
 	 *  Initialiser le modèle du ticket au format PDF. Les paramètres généraux sont définit au préalable au sein de la classe
+	 *
+	 *  @param array  $params   Contient différents paramètres personnalisables mais requis pour le template 
+	 *  @param string $template Permet de définir globalement le template à utiliser
 	 */
-	public function setGenerator(){
-		$this->generator->event_logo      = $this->event_logo;
-		$this->generator->event_name      = $this->event_name;
-		$this->generator->event_location  = $this->event_location;
-		$this->generator->event_orga_name = $this->event_orga_name;
+	public function setTemplate($params, $template = 'BasicTicket'){
+		$this->generator->params = $params;
 	}
 	
 	/**
@@ -73,13 +82,12 @@ class Ticket {
 	 *  @param array  $tickets         Contient le(s) ticket(s) eux-même dans des tableaux
 	 *  @param bool   $multiple_file   Permet d'enregistrer sous plusieurs fichiers chaque billets (pas de rendu)
 	 *  @param bool   $display         Rendu direct du PDF (affichage dans la naviguateur en appelant la fonction)
-	 *  @param string $ticket_template Template du ticket à utiliser
+	 *  @param string $ticket_template Template du ticket à utiliser pour la génération de ces tickets uniquement (peut être définit globalement)
 	 *  @param bool   $use_qr_links    Permet d'assigner le lien définit dans le ticket au code Qr, il est possible de définir ce paramètre en général ($this->use_qr_links)
 	 *  
 	 *  return array Retourne le code de chaque ticket généré ainsi que l'information si les tickets sont dans un seul fichiers ou plusieurs
 	 */
 	public function genTickets($tickets, $multiple_file = false, $display = true, $ticket_template = 'BasicTicket', $use_qr_links = false){
-		$this->setGenerator();
 		
 		if(!method_exists($this->generator, $ticket_template))
 			$this->error->echoError(1);
@@ -103,12 +111,13 @@ class Ticket {
 					$this->error->echoError(4);
 			}
 			
-			if($this->use_qr_links === true || $use_qr_links === true)
-				$qr_type = (isset($ticket['link_validation']) && !filter_var($ticket['link_validation'], FILTER_VALIDATE_URL) === false) ? $ticket['link_validation'] : $ticket['ticket_code'];
-			
 			$ticket = $this->cleanTicket($ticket);
 			
-			$this->generator->setInformations($ticket, $this->genQrCode($qr_type), $this->genBarCode($ticket['ticket_code']));
+			$qr_content = $ticket['ticket_code'];
+			if($this->use_qr_links === true || $use_qr_links === true)
+				$qr_content = (isset($ticket['link_validation']) && !filter_var($ticket['link_validation'], FILTER_VALIDATE_URL) === false) ? $ticket['link_validation'] : $ticket['ticket_code'];
+			
+			$this->generator->setData(['event' => (object) $this->event, 'ticket' => (object) $ticket], $this->genQrCode($qr_content), $this->genBarCode($ticket['ticket_code']));
 			$this->generator->AddPage();
 			$this->generator->$ticket_template();
 			
@@ -186,14 +195,14 @@ class Ticket {
 			$this->error->echoError(8);
 		
 		// Propriétés d'un ticket-type
-		$vars = ['ticket_code', 'user_id', 'user_first_name', 'user_last_name', 'event_date', 'ticket_type', 'ticket_price', 'ticket_buy_date', 'link_validation'];
+		$vars = ['ticket_code', 'event_id', 'user_id', 'user_first_name', 'user_last_name', 'ticket_type', 'ticket_price', 'ticket_buy_date', 'link_validation'];
 		
 		// Propriétés d'un ticket-type (et les possibiltées)
 		$ticket_code     = ['ticket_code', 'code', 'code_ticket', 'code_billet', 'billet_code'];
+		$event_id        = ['event_id', 'eventid', 'idevent', 'id_event', 'event'];
 		$user_id         = ['user_id', 'id_user', 'uid', 'u_id', 'id'];
 		$user_first_name = ['user_first_name', 'firstname', 'first_name', 'prenom', 'name'];
 		$user_last_name  = ['user_last_name', 'lastname', 'last_name', 'nom'];
-		$event_date      = ['event_date', 'eventdate', 'date', 'dateevent', 'date_event', 'date_evenement', 'dateevenement', 'evenement_date', 'evenementdate'];
 		$ticket_type     = ['ticket_type', 'type_ticket', 'tickettype', 'typeticket', 'type', 'type_billet', 'billet_type', 'typebillet', 'billettype'];
 		$ticket_price    = ['ticket_price', 'price_ticket', 'price', 'ticketprice', 'priceticket', 'prix', 'billet_prix', 'prix_billet', 'billetprix', 'prixbillet'];
 		$ticket_buy_date = ['ticket_buy_date', 'ticket_buy', 'ticketbuydate', 'buy_date', 'buydate', 'date_buy', 'date_achat', 'date_achat_billet'];
@@ -211,9 +220,9 @@ class Ticket {
 		$new_ticket = [];
 		$new_ticket = [
 			'ticket_code'     => !is_array($ticket_code) ? $ticket_code : 'N/A',
+			'event_id'        => !is_array($event_id) ? $event_id : 'N/A',
 			'user_first_name' => !is_array($user_first_name) ? $user_first_name : 'N/A',
 			'user_last_name'  => !is_array($user_last_name) ? $user_last_name : 'N/A',
-			'event_date'      => !is_array($event_date) ? date('d/m/Y H:i:s', strtotime($event_date)) : 'N/A',
 			'ticket_type'     => !is_array($ticket_type) ? strtoupper($ticket_type) : 'N/A',
 			'ticket_price'    => !is_array($ticket_price) ? $ticket_price : 'N/A',
 			'ticket_buy_date' => !is_array($ticket_buy_date) ? $ticket_buy_date : 'N/A',
@@ -230,7 +239,7 @@ class Ticket {
 	 *  @return string Ticket importés et normés
 	 */
 	public function importTickets($file){
-		$this->checkFile($file, ['csv', 'xlsx']);
+		$this->checkFile($file, ['csv']);
 		
 		$tickets = [];
 		$i = 1;
@@ -294,7 +303,7 @@ class Ticket {
 		    header("Content-Disposition: attachment; filename=" . $filename);
 		}
 		
-		$head = ($head === true) ? $head = ["id", "ticket_code", "user_first_name", "user_last_name", "event_date", "ticket_type", "ticket_price", "ticket_buy_date"] : ["", "Code", "Prénom", "Nom", "Date", "Type", "Prix", "Date d'achat"];
+		$head = ($head === true) ? $head = ["id", "ticket_code", "event_id", "user_first_name", "user_last_name", "ticket_type", "ticket_price", "ticket_buy_date"] : ["", "Code", "Prénom", "Nom", "Date", "Type", "Prix", "Date d'achat"];
 	    
 		$cells = [];
 		$i = 0;
@@ -308,9 +317,9 @@ class Ticket {
 			$new_ticket = [
 			    'id' => $i,
 				'ticket_code'     => isset($ticket['ticket_code']) ? $ticket['ticket_code'] : null,
+				'event_id'        => isset($ticket['$event_id']) ? $ticket['$event_id'] : null,
 				'user_first_name' => isset($ticket['user_first_name']) ? $ticket['user_first_name'] : null,
 				'user_last_name'  => isset($ticket['user_last_name']) ? $ticket['user_last_name'] : null,
-				'event_date'      => isset($ticket['event_date']) ? date('d/m/Y', strtotime($ticket['event_date'])) : null,
 				'ticket_type'     => isset($ticket['ticket_type']) ? $ticket['ticket_type'] : null,
 				'ticket_price'    => isset($ticket['ticket_price']) ? $ticket['ticket_price'] : null,
 				'ticket_buy_date' => isset($ticket['ticket_buy_date']) ?  date('d/m/Y', strtotime($ticket['ticket_buy_date'])) : null,
@@ -408,9 +417,8 @@ class Ticket {
 		}
 		
 		ignore_user_abort(true);
-		if(connection_aborted()){
+		if(connection_aborted())
 			unlink($file);
-		}
 	}
 	
 	/**

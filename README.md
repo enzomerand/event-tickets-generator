@@ -5,7 +5,7 @@
 Event Ticket Generator vous permet de générer des billets au format PDF, les exporter au format CSV ou importer des billets pour des événements.
 
 Fonctionnalités :
-- Générer un ou plusieurs tickets au format PDF, dans un ou plusieurs fichiers et choisir (si un seul fichier) de l'afficher directement dans le naviguateur
+- Générer un ou plusieurs tickets au format PDF, dans un ou plusieurs fichiers et choisir (si un seul fichier) de l'afficher directement dans le navigateur
 - Importer des tickets à partir d'un fichier CSV
 - Exporter des tickets au format CSV
 - Télécharger un ou plusieurs tickets
@@ -31,8 +31,8 @@ $ticket->setGenerator();
 - Ajout des CGV en bas du billets
 - Traductions
 - Ajout d'un champ site web
-
-Bugs actuels :
+- Exportation au format XLSX
 - Affichage des prix sous le bon format, nottament avec les nombres décimaux dans l'exportation (fichier excel)
+- Suppression d'un ticket
 
 N'hésitez pas à proposer des nouveautés, suggérer, etc...
