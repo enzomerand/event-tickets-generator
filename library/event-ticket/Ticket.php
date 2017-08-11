@@ -236,7 +236,7 @@ class Ticket {
 	 *  
 	 *  @param string|array $file Chemin du fichier à importer
 	 *
-	 *  @return string Ticket importés et normés
+	 *  @return array Ticket(s) importé(s) et normé(s)
 	 */
 	public function importTickets($file){
 		$this->checkFile($file, ['csv']);
